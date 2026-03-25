@@ -2,11 +2,13 @@ import mongoose from 'mongoose';
 
 export interface IFormField {
   id: string;
-  type: 'text' | 'file' | 'select' | 'date';
+  type: 'text' | 'file' | 'select' | 'date' | 'heading' | 'subtext' | 'divider';
   label: string;
   placeholder?: string;
   required: boolean;
   options?: string[]; // For select type
+  style?: Record<string, string | number>; // For visual elements
+  value?: string; // For visual elements like headings
 }
 
 export interface IStep {
@@ -14,7 +16,8 @@ export interface IStep {
   title: string;
   description?: string;
   fields: IFormField[];
-  templateHtml: string; // New: Custom HTML for this step
+  templateHtml: string; 
+  designMode?: 'visual' | 'code';
 }
 
 export interface IEvent extends mongoose.Document {
@@ -35,12 +38,14 @@ export interface IEvent extends mongoose.Document {
 
 const FormFieldSchema = new mongoose.Schema({
   id: { type: String, required: true },
-  type: { type: String, enum: ['text', 'file', 'select', 'date'], required: true },
+  type: { type: String, enum: ['text', 'file', 'select', 'date', 'heading', 'subtext', 'divider'], required: true },
   label: { type: String, required: true },
   placeholder: { type: String },
   required: { type: Boolean, default: false },
   options: [{ type: String }],
-});
+  style: { type: mongoose.Schema.Types.Map, of: String },
+  value: { type: String },
+}, { _id: false, id: false });
 
 const StepSchema = new mongoose.Schema({
   id: { type: String, required: true },
@@ -48,7 +53,8 @@ const StepSchema = new mongoose.Schema({
   description: { type: String },
   fields: [FormFieldSchema],
   templateHtml: { type: String, default: '' },
-});
+  designMode: { type: String, enum: ['visual', 'code'], default: 'visual' },
+}, { _id: false, id: false });
 
 const EventSchema = new mongoose.Schema<IEvent>({
   title: { type: String, required: true },

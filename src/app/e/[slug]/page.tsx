@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Upload, Loader2, PartyPopper, CheckCircle2 } from "lucide-react";
-import Image from "next/image";
+import { createPortal } from "react-dom";
 
 interface EventData {
   _id: string;
@@ -13,14 +11,63 @@ interface EventData {
   pageConfig: any;
 }
 
+function PortalAnchor({ id, children }: { id: string; children: (container: HTMLElement) => React.ReactNode }) {
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = document.getElementById(id);
+    if (el) setContainer(el);
+  }, [id]);
+
+  if (!container) return null;
+  return createPortal(children(container), container);
+}
+
+const MemoTemplate = memo(({ html }: { html: string }) => {
+  return <div dangerouslySetInnerHTML={{ __html: html }} className="h-full w-full" />;
+});
+
+MemoTemplate.displayName = "MemoTemplate";
+
 export default function PublicEventForm() {
   const params = useParams();
+  const router = useRouter();
   const [event, setEvent] = useState<EventData | null>(null);
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const router = useRouter();
+
+  // Derive steps early for hook safety
+  const steps = event?.steps || [];
+  const currentStep = steps[currentStepIdx];
+  const isLastStep = steps.length > 0 && currentStepIdx === steps.length - 1;
+
+  // Memoize template processing
+  const { processedHtml, fieldIds } = useMemo(() => {
+    if (!currentStep?.templateHtml) return { processedHtml: "", fieldIds: [] };
+    
+    let html = currentStep.templateHtml;
+    const placeholders = html.match(/\{\{field:(.*?)\}\}/g) || [];
+    const ids = placeholders.map((p: string) => p.match(/\{\{field:(.*?)\}\}/)?.[1]).filter(Boolean) as string[];
+
+    let processed = html;
+    ids.forEach(id => {
+      processed = processed.replace(new RegExp(`\\{\\{field:${id}\\}\\}`, 'g'), `<div id="mrapp-anchor-${id}" class="mrapp-inline-anchor"></div>`);
+    });
+
+    processed = processed.replace(/\{\{next\}\}/g, `<div id="mrapp-btn-next" class="mrapp-inline-anchor"></div>`);
+    processed = processed.replace(/\{\{back\}\}/g, `<div id="mrapp-btn-back" class="mrapp-inline-anchor"></div>`);
+    processed = processed.replace(/\{\{submit\}\}/g, `<div id="mrapp-btn-submit" class="mrapp-inline-anchor"></div>`);
+
+    return { processedHtml: processed, fieldIds: ids };
+  }, [currentStep?.templateHtml]);
+
+  useEffect(() => {
+    (window as any).mrapp_back = () => {
+      if (currentStepIdx > 0) setCurrentStepIdx(currentStepIdx - 1);
+    };
+  }, [currentStepIdx]);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -37,54 +84,11 @@ export default function PublicEventForm() {
     if (params.slug) fetchEvent();
   }, [params.slug]);
 
-  if (loading) return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
-       <div className="relative">
-         <div className="w-20 h-20 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-         <div className="absolute inset-0 flex items-center justify-center">
-           <div className="w-10 h-10 bg-indigo-500/10 rounded-full animate-pulse" />
-         </div>
-       </div>
-       <p className="mt-8 text-slate-400 font-black tracking-widest uppercase text-xs">Loading Event Engine</p>
-    </div>
-  );
-
-  if (!event) return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-center">
-       <div className="space-y-4">
-          <h1 className="text-4xl font-black text-white italic tracking-tighter">EVENT NOT FOUND</h1>
-          <p className="text-slate-500 font-medium">The link you're trying to access is invalid or expired.</p>
-          <button onClick={() => router.push('/')} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-bold">Return Home</button>
-       </div>
-    </div>
-  );
-
-  const steps = event.steps || [];
-  const currentStep = steps[currentStepIdx];
-  const isLastStep = currentStepIdx === steps.length - 1;
-
-  const handleNext = async () => {
-    // Validate current step fields
-    const stepFields = currentStep.fields;
-    for (const field of stepFields) {
-      if (field.required && !formData[field.id]) {
-        return alert(`${field.label} is required.`);
-      }
-    }
-
-    if (!isLastStep) {
-      setCurrentStepIdx(currentStepIdx + 1);
-    } else {
-      handleSubmit();
-    }
-  };
-
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const finalData = { ...formData };
       
-      // Handle all file uploads across all steps
       for (const step of steps) {
         for (const field of step.fields) {
           if (field.type === 'file' && formData[field.id] instanceof File) {
@@ -102,12 +106,11 @@ export default function PublicEventForm() {
         }
       }
 
-      // Submit response
       const response = await fetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          eventId: event._id,
+          eventId: event?._id,
           data: finalData
         }),
       });
@@ -119,58 +122,67 @@ export default function PublicEventForm() {
     }
   };
 
+  const handleNext = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const stepFields = currentStep?.fields || [];
+    for (const field of stepFields) {
+      if (field.required && !formData[field.id]) {
+        return alert(`${field.label} is required.`);
+      }
+    }
+
+    if (!isLastStep) {
+      setCurrentStepIdx(currentStepIdx + 1);
+    } else {
+      handleSubmit();
+    }
+  };
+
   const renderField = (fieldId: string) => {
+    if (!currentStep) return null;
     const field = currentStep.fields.find((f: any) => f.id === fieldId);
-    if (!field) return <span className="text-rose-500 font-bold underline">Field "{fieldId}" not found</span>;
+    if (!field) return <span className="mrapp-error">Field &quot;{fieldId}&quot; not found</span>;
 
     return (
-      <div key={field.id} className="inline-block w-full max-w-md text-left align-middle mx-auto">
-        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">{field.label}</label>
+      <div key={field.id} className={`mrapp-field-wrapper mrapp-wrapper-${field.id}`}>
+        <label htmlFor={field.id} className={`mrapp-field-label mrapp-input-${field.id}-label`}>{field.label}</label>
         {field.type === 'text' && (
           <input 
             type="text"
+            id={field.id}
+            name={field.id}
             required={field.required}
             value={formData[field.id] || ""}
             onChange={(e) => setFormData({ ...formData, [field.id]: e.target.value })}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-800"
+            className={`mrapp-field-input mrapp-text-input mrapp-input-${field.id}`}
             placeholder={field.placeholder || "Type here..."}
           />
         )}
         {field.type === 'file' && (
-           <label className="relative group block cursor-pointer transition-all">
+           <div className={`mrapp-file-wrapper mrapp-input-${field.id}-container`}>
              <input 
                type="file"
+               id={field.id}
+               name={field.id}
                required={field.required}
-               className="hidden"
+               className={`mrapp-field-input mrapp-file-input mrapp-input-${field.id}`}
                onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) setFormData({ ...formData, [field.id]: file });
                }}
              />
-             <div className={`flex items-center gap-6 p-6 rounded-2xl border-2 border-dashed transition-all ${formData[field.id] ? 'border-indigo-500 bg-indigo-500/5' : 'border-white/10 hover:border-white/20 hover:bg-white/5'}`}>
-                {formData[field.id] ? (
-                  <div className="flex items-center gap-4 w-full">
-                    <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                      <Image src={URL.createObjectURL(formData[field.id])} alt="Preview" fill className="object-cover" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 truncate flex-1">{formData[field.id].name}</p>
-                    <CheckCircle2 className="w-5 h-5 text-indigo-500" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                     <Upload className="w-6 h-6 text-slate-500" />
-                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Select {field.label}</p>
-                  </div>
-                )}
-             </div>
-           </label>
+             {formData[field.id] && <span className="mrapp-file-selected-text">Selected: {formData[field.id].name}</span>}
+           </div>
         )}
         {field.type === 'date' && (
           <input 
             type="date"
+            id={field.id}
+            name={field.id}
             required={field.required}
+            value={formData[field.id] || ""}
             onChange={(e) => setFormData({ ...formData, [field.id]: e.target.value })}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+            className={`mrapp-field-input mrapp-date-input mrapp-input-${field.id}`}
           />
         )}
       </div>
@@ -178,9 +190,17 @@ export default function PublicEventForm() {
   };
 
   const renderStepContent = () => {
+    if (!currentStep) {
+      return (
+        <div className="space-y-8 flex items-center justify-center p-8 text-white">
+           <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No configuration available for this step.</p>
+        </div>
+      );
+    }
+
     if (!currentStep.templateHtml) {
       return (
-        <div className="space-y-8">
+        <div className="space-y-8 p-8 bg-black/30 backdrop-blur-xl rounded-4xl border border-white/5 max-w-lg mx-auto m-12">
            {currentStep.fields.map((field: any) => (
               <div key={field.id}>{renderField(field.id)}</div>
            ))}
@@ -188,94 +208,73 @@ export default function PublicEventForm() {
       );
     }
 
-    // Split HTML by template placeholders {{field:id}}
-    const parts = currentStep.templateHtml.split(/\{\{field:(.*?)\}\}/g);
-    
     return (
-      <div className="custom-step-html">
-        {parts.map((part: string, i: number) => {
-          if (i % 2 === 0) {
-            // This is raw HTML
-            return <div key={i} dangerouslySetInnerHTML={{ __html: part }} className="inline" />;
-          } else {
-            // This is a field index
-            return <div key={i} className="my-4">{renderField(part)}</div>;
-          }
-        })}
+      <div className="custom-step-html h-full w-full">
+        <MemoTemplate html={processedHtml} />
+        {fieldIds.map(id => id && (
+          <PortalAnchor key={id} id={`mrapp-anchor-${id}`}>
+             {() => renderField(id)}
+          </PortalAnchor>
+        ))}
+        <PortalAnchor id="mrapp-btn-next">
+          {() => (
+            <button type="submit" className="mrapp-next-btn mrapp-generated-btn mrapp-button-next">Next Step</button>
+          )}
+        </PortalAnchor>
+        <PortalAnchor id="mrapp-btn-back">
+          {() => (
+            <button type="button" onClick={() => (window as any).mrapp_back?.()} className="mrapp-back-btn mrapp-generated-btn mrapp-button-back">Go Back</button>
+          )}
+        </PortalAnchor>
+        <PortalAnchor id="mrapp-btn-submit">
+          {() => (
+            <button type="submit" disabled={submitting} className="mrapp-submit-btn mrapp-generated-btn mrapp-button-submit">
+              {submitting ? "Processing..." : "Finalize Submit"}
+            </button>
+          )}
+        </PortalAnchor>
+        <style jsx global>{`
+          .mrapp-inline-anchor { display: contents; }
+        `}</style>
       </div>
     );
   };
 
+  if (loading) return (
+    <div className="mrapp-loading" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+       <p>Loading...</p>
+    </div>
+  );
+
+  if (!event) return (
+    <div className="mrapp-error-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+       <h1>Event Not Found</h1>
+       <button onClick={() => router.push('/')}>Return Home</button>
+    </div>
+  );
+
+  const hasCustomButtons = currentStep?.templateHtml?.match(/\{\{next\}\}|\{\{back\}\}|\{\{submit\}\}|mrapp-next-btn|mrapp-back-btn|mrapp-submit-btn/);
+
   return (
-    <div 
-      className="min-h-screen flex flex-col font-sans selection:bg-indigo-500/30 overflow-x-hidden"
-      style={{ 
-        backgroundColor: event.pageConfig?.backgroundColor || '#020617',
-        color: event.pageConfig?.theme === 'light' ? '#0f172a' : '#ffffff' 
-      }}
-    >
-        {/* Progress Bar */}
-        <div className="fixed top-0 left-0 w-full h-1.5 bg-white/5 z-50">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${((currentStepIdx + 1) / steps.length) * 100}%` }}
-              className="h-full bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.5)]"
-            />
+    <div className="mrapp-page-container w-full min-h-screen" style={{ backgroundColor: event.pageConfig?.backgroundColor || 'transparent' }}>
+      <form onSubmit={handleNext} className="mrapp-form w-full h-full m-0 p-0">
+        <div className="mrapp-step-content w-full h-full">
+           {renderStepContent()}
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center relative p-6">
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={currentStepIdx}
-              initial={{ opacity: 0, scale: 0.98, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.02, y: -10 }}
-              className="w-full h-full flex flex-col items-center justify-center"
-            >
-               {/* Fixed Header Overlay (Optional, but useful to keep context) */}
-               <div className="mb-8 text-center opacity-30 pointer-events-none sticky top-12 z-10">
-                  <p className="text-[10px] font-black tracking-[0.4em] uppercase">Step {currentStepIdx + 1} / {steps.length}</p>
-               </div>
-
-               <div className="w-full">
-                  {renderStepContent()}
-               </div>
-
-               {/* Navigation Buttons - Always Float or Sticky at Bottom */}
-               <div className="mt-12 w-full max-w-2xl flex flex-col items-center gap-6 px-6">
-                  <button 
-                    onClick={handleNext}
-                    disabled={submitting}
-                    className="w-full h-20 flex items-center justify-center gap-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-black py-4 rounded-full shadow-4xl shadow-indigo-600/20 active:translate-y-1 transition-all group"
-                  >
-                    {submitting ? (
-                      <Loader2 className="w-6 h-6 animate-spin text-white/50" />
-                    ) : (
-                      <>
-                        <span className="uppercase tracking-[0.2em] text-sm">{isLastStep ? "FINALIZE CREATIVE" : "NEXT STEP"}</span>
-                        <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                      </>
-                    )}
-                  </button>
-
-                  {currentStepIdx > 0 && (
-                    <button 
-                      type="button" 
-                      onClick={() => setCurrentStepIdx(currentStepIdx - 1)}
-                      className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-all"
-                    >
-                      &larr; GO BACK
-                    </button>
-                  )}
-               </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-
-        {/* Dynamic Footer Aesthetic */}
-        <div className="fixed bottom-6 w-full text-center pointer-events-none opacity-20">
-           <p className="text-[9px] font-black tracking-widest uppercase">MR Personalization Cloud v2.1</p>
-        </div>
+        {!hasCustomButtons && (
+          <div className="mrapp-actions" style={{ padding: '20px', textAlign: 'center' }}>
+            <button type="submit" disabled={submitting} className="mrapp-submit-btn">
+              {submitting ? "Processing..." : (isLastStep ? "Finalize Submit" : "Next Step")}
+            </button>
+            {currentStepIdx > 0 && (
+              <button type="button" onClick={() => setCurrentStepIdx(currentStepIdx - 1)} className="mrapp-back-btn" style={{ marginLeft: '10px' }}>
+                Go Back
+              </button>
+            )}
+          </div>
+        )}
+      </form>
     </div>
   );
 }

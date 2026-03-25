@@ -1,0 +1,136 @@
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,800&family=Outfit:wght@400;700;800&display=swap');
+
+    .rakhi-page {
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #fffcf8;
+        background-image: radial-gradient(#ffe6e6 1px, transparent 1px);
+        background-size: 30px 30px;
+        padding: 40px 20px;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .greeting-card {
+        width: 100%;
+        max-width: 500px;
+        background: white;
+        border-radius: 40px;
+        box-shadow: 0 40px 80px rgba(200, 50, 50, 0.15);
+        border: 4px solid #fff5f5;
+        overflow: hidden;
+        text-align: center;
+        padding: 60px 40px;
+        position: relative;
+    }
+
+    .rakhi-top-decoration {
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 100px;
+        color: rgba(255, 107, 107, 0.05);
+        pointer-events: none;
+    }
+
+    .photo-area {
+        width: 220px;
+        height: 220px;
+        margin: 0 auto 40px;
+        position: relative;
+    }
+
+    .photo-area::after {
+        content: '';
+        position: absolute;
+        inset: -10px;
+        border: 2px solid #ff6b6b;
+        border-radius: 100px;
+        opacity: 0.2;
+    }
+
+    .dr-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 100px;
+        border: 8px solid white;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .greeting-text {
+        font-family: 'Playfair Display', serif;
+        font-size: 42px;
+        font-style: italic;
+        color: #c53030;
+        margin-bottom: 20px;
+        line-height: 1;
+    }
+
+    .personalized-msg {
+        font-size: 18px;
+        color: #2d3748;
+        font-weight: 500;
+        margin-bottom: 40px;
+        line-height: 1.6;
+    }
+
+    .personalized-msg span {
+        color: #ff6b6b;
+        font-weight: 800;
+    }
+
+    .rakhi-footer {
+        padding-top: 30px;
+        border-top: 2px dashed #ffe6e6;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        color: #cbd5e1;
+    }
+
+    /* Download button using standard class */
+    .mrapp-button-download_button {
+        margin-top: 40px !important;
+        background: #ff6b6b !important;
+        color: white !important;
+        padding: 16px 40px !important;
+        border-radius: 100px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 2px !important;
+        border: none !important;
+        cursor: pointer !important;
+        box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3) !important;
+    }
+</style>
+
+<div class="rakhi-page" id="ad-capture-area">
+    <div class="rakhi-top-decoration">❂</div>
+
+    <div class="greeting-card">
+        <div class="photo-area">
+            <img src="{{photo}}" class="dr-img" alt="Shared Memory" />
+        </div>
+
+        <h1 class="greeting-text">Happy Raksha Bandhan</h1>
+
+        <p class="personalized-msg">
+            Warm wishes to <span>Dr. {{doctor_name}}</span>,<br />
+            Thank you for being a guardian of health.<br />
+            <br />
+            Best wishes from,<br />
+            <span>{{sender_name}}</span>
+        </p>
+
+        <div class="rakhi-footer">Festive Greeting • 2024</div>
+    </div>
+
+    {{download_button}}
+</div>

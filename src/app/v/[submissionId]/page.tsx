@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, Download, House, Share2, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
 import canvasConfetti from "canvas-confetti";
 
 export default function VisualAdPage() {
@@ -24,6 +22,12 @@ export default function VisualAdPage() {
         setEvent(eventData);
 
         let filledHtml = eventData.templateHtml;
+        
+        // Add download button replacement
+        filledHtml = filledHtml.replace(
+          /\{\{download_button\}\}/g, 
+          '<button id="download-btn-placeholder" class="mrapp-download-btn mrapp-button-download_button" data-html2canvas-ignore="true">Download</button>'
+        );
         
         // Dynamic replacement based on data map
         const dataMap = submission.data;
@@ -56,95 +60,82 @@ export default function VisualAdPage() {
     if (params.submissionId) renderAd();
   }, [params.submissionId, router]);
 
+  const config = event?.pageConfig || {};
+
+  useEffect(() => {
+    const handleDownload = async () => {
+      const btn = document.getElementById("download-btn-placeholder");
+      const fallbackBtn = document.getElementById("fallback-download-btn");
+      const customBtn = document.querySelector(".mrapp-download-btn");
+      const activeBtn = (btn || fallbackBtn || customBtn) as HTMLElement;
+      
+      if (activeBtn) {
+        if (!activeBtn.hasAttribute('data-original-text')) {
+          activeBtn.setAttribute('data-original-text', activeBtn.innerHTML);
+        }
+        activeBtn.innerHTML = "Downloading...";
+        activeBtn.style.opacity = "0.5";
+      }
+
+      const content = document.getElementById('ad-capture-area');
+      if (!content) return;
+
+      try {
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(content as HTMLElement, {
+          useCORS: true,
+          scale: 2,
+          backgroundColor: config.backgroundColor || null
+        });
+        const link = document.createElement('a');
+        link.download = `event-${params.submissionId}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (error) {
+        console.error("Download failed", error);
+        alert("Failed to download image.");
+      } finally {
+        if (activeBtn) {
+          activeBtn.innerHTML = (activeBtn.id === "download-btn-placeholder" || activeBtn.id === "fallback-download-btn") ? "Download" : (activeBtn.getAttribute('data-original-text') || activeBtn.innerHTML);
+          activeBtn.style.opacity = "1";
+        }
+      }
+    };
+
+    const btn = document.getElementById("download-btn-placeholder");
+    const fallbackBtn = document.getElementById("fallback-download-btn");
+    const customBtns = document.querySelectorAll(".mrapp-download-btn");
+
+    if (btn) btn.addEventListener("click", handleDownload);
+    if (fallbackBtn) fallbackBtn.addEventListener("click", handleDownload);
+    customBtns.forEach(b => b.addEventListener("click", handleDownload));
+
+    return () => {
+      if (btn) btn.removeEventListener("click", handleDownload);
+      if (fallbackBtn) fallbackBtn.removeEventListener("click", handleDownload);
+      customBtns.forEach(b => b.removeEventListener("click", handleDownload));
+    };
+  }, [htmlContent, params.submissionId, config.backgroundColor]);
+
   if (loading) return (
-    <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center">
-       <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-6" />
-       <p className="text-slate-500 font-black tracking-widest uppercase text-[10px]">Generating Masterpiece</p>
+    <div className="mrapp-loading" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+       <p>Generating Masterpiece...</p>
     </div>
   );
 
-  const config = event?.pageConfig || {};
-  const isDark = config.theme === 'dark';
+  const hasDownloadPlaceholder = htmlContent.includes('download-btn-placeholder') || htmlContent.includes('mrapp-download-btn');
 
   return (
     <div 
-      className={`min-h-screen p-6 lg:p-12 flex flex-col items-center gap-12 relative overflow-x-hidden transition-colors duration-1000`}
-      style={{ backgroundColor: config.backgroundColor || (isDark ? '#020617' : '#f8fafc') }}
+      className="mrapp-v-container w-full min-h-screen"
+      id="ad-capture-area"
+      style={{ 
+        backgroundColor: config.backgroundColor || 'transparent',
+      }}
     >
-       {/* Background Aesthetics */}
-       <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-          <div 
-            className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] opacity-20 animate-pulse" 
-            style={{ backgroundColor: config.primaryColor || '#4f46e5' }}
-          />
-          <div 
-            className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[120px] opacity-10" 
-            style={{ backgroundColor: config.primaryColor || '#4f46e5' }}
-          />
-       </div>
+       <div dangerouslySetInnerHTML={{ __html: htmlContent }} className="mrapp-custom-html w-full" />
 
-       <header className="relative z-10 text-center space-y-4">
-          <motion.div 
-            initial={{ scale: 0, rotate: -20 }}
-            animate={{ scale: 1, rotate: 0 }}
-            className="inline-flex h-16 w-16 items-center justify-center rounded-[2rem] shadow-2xl"
-            style={{ backgroundColor: config.primaryColor || '#4f46e5' }}
-          >
-             <Sparkles className="w-8 h-8 text-white" />
-          </motion.div>
-          <h1 className={`text-4xl font-black italic tracking-tighter uppercase lg:text-7xl ${isDark ? 'text-white' : 'text-slate-900'}`}>
-             Visualization Ready
-          </h1>
-          <p className={`${isDark ? 'text-slate-500' : 'text-slate-400'} text-lg font-bold uppercase tracking-widest text-xs`}>Personalized for your engagement</p>
-       </header>
-
-       {/* The Main Visual Container - Takes "Whole Page Design" spirit by giving full width/freedom */}
-       <motion.div 
-         initial={{ opacity: 0, y: 30 }}
-         animate={{ opacity: 1, y: 0 }}
-         className="relative z-10 w-full max-w-5xl flex items-center justify-center"
-       >
-          <div className="w-full">
-             <div 
-               dangerouslySetInnerHTML={{ __html: htmlContent }} 
-               className="w-full flex items-center justify-center all-initial"
-             />
-          </div>
-       </motion.div>
-
-       <footer className="relative z-10 flex flex-wrap justify-center gap-6 mt-12 mb-20">
-          <button 
-            onClick={() => window.print()}
-            className="px-12 py-6 bg-white text-slate-950 font-black rounded-full hover:scale-105 transition-all shadow-4xl flex items-center gap-3 group"
-          >
-             <Download className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
-             <span className="uppercase tracking-widest text-xs">Download Creative</span>
-          </button>
-          
-          <button 
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              alert("Link copied to clipboard!");
-            }}
-            className="px-12 py-6 text-white font-black rounded-full transition-all shadow-2xl flex items-center gap-3 group border border-white/10 backdrop-blur-xl hover:bg-white/5"
-            style={{ backgroundColor: `${config.primaryColor}22` }}
-          >
-             <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-             <span className="uppercase tracking-widest text-xs">Share Connection</span>
-          </button>
-
-          <button 
-            onClick={() => router.push("/admin")}
-            className="p-6 bg-slate-800/50 backdrop-blur-xl text-white rounded-full hover:bg-slate-700 transition-all border border-white/5"
-          >
-             <House className="w-6 h-6" />
-          </button>
-       </footer>
-
-       {/* Export Helper Instructions */}
-       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none opacity-40">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 italic">MR Engagement Engine v2.0</p>
-       </div>
+       {/* No more fallback button - only shows if {{download_button}} is in template */}
     </div>
   );
 }

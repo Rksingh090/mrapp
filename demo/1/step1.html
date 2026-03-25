@@ -1,0 +1,128 @@
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Outfit:wght@300;400;600&display=swap');
+
+    .festive-viewport {
+        min-height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: radial-gradient(circle at top right, #fff5f5, #fffcf3);
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 30px;
+        padding: 50px 40px;
+        width: 100%;
+        max-width: 480px;
+        box-shadow: 0 30px 60px rgba(255, 107, 107, 0.1);
+        text-align: center;
+        border: 1px solid #ffd8d8;
+        position: relative;
+    }
+
+    .mandala-icon {
+        font-size: 60px;
+        margin-bottom: 20px;
+        color: #ff6b6b;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .festive-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 32px;
+        color: #c53030;
+        margin-bottom: 10px;
+    }
+
+    .festive-subtitle {
+        color: #718096;
+        font-size: 14px;
+        margin-bottom: 40px;
+    }
+
+    /* Input Field Styling */
+    .mrapp-field-wrapper {
+        margin-bottom: 24px;
+        text-align: left;
+    }
+
+    .mrapp-field-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #ff8e8e;
+        margin-bottom: 8px;
+        margin-left: 14px;
+        display: block;
+    }
+
+    .mrapp-field-input {
+        width: 100% !important;
+        border-radius: 15px !important;
+        border: 1px solid #ffe3e3 !important;
+        padding: 18px 24px !important;
+        font-size: 16px !important;
+        transition: all 0.3s ease !important;
+        background: #fffafb !important;
+    }
+
+    .mrapp-field-input:focus {
+        border-color: #ff6b6b !important;
+        background: #fff !important;
+        outline: none !important;
+        box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.05) !important;
+    }
+
+    /* Button Styling */
+    .mrapp-button-next {
+        width: 100%;
+        padding: 20px;
+        border-radius: 15px;
+        border: none;
+        background: #ff6666 !important;
+        color: white;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        cursor: pointer;
+        transition: 0.3s;
+        box-shadow: 0 10px 20px rgba(255, 102, 102, 0.3) !important;
+    }
+
+    .mrapp-button-next:hover {
+        transform: scale(1.02);
+        background: #f25252 !important;
+    }
+</style>
+
+<div class="festive-viewport">
+    <div class="form-card">
+        <div class="mandala-icon">❈</div>
+        <h1 class="festive-title">Raksha Bandhan</h1>
+        <p class="festive-subtitle">Personalize your special bond of protection.</p>
+
+        <div class="inputs">
+            {{field:doctor_name}}
+            {{field:sender_name}}
+        </div>
+
+        {{next}}
+    </div>
+</div>
