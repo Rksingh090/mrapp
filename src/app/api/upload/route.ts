@@ -27,6 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Upload to Vercel Blob
     const response = await put(blob.name, blob, {
       access: 'public',
+      token: process.env.MRAPP_READ_WRITE_TOKEN,
     });
 
     // Save metadata to MongoDB

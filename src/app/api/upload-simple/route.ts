@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const { url } = await put(file.name, file, { access: 'public' });
+    const { url } = await put(file.name, file, { access: 'public', token: process.env.MRAPP_READ_WRITE_TOKEN });
     return NextResponse.json({ url });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
