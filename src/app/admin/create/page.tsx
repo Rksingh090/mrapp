@@ -288,59 +288,98 @@ export default function CreateEvent() {
                              </div>
                              <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black bg-slate-800 px-3 py-1 rounded-full text-slate-400">STEP {sIdx + 1}</span>
+                                <button 
+                                  onClick={() => setEditingStepHtml(editingStepHtml === step.id ? null : step.id)}
+                                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${editingStepHtml === step.id ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white'}`}
+                                >
+                                  <Code className="w-3.5 h-3.5" />
+                                  DESIGN HTML
+                                </button>
                                 <button onClick={() => removeStep(step.id)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all">
                                   <Trash2 className="w-5 h-5" />
                                 </button>
                              </div>
                           </div>
 
-                          <div className="p-8 space-y-4">
-                             <div className="grid grid-cols-1 gap-4">
-                                {step.fields.map((field) => (
-                                  <div key={field.id} className="bg-white/[0.03] border border-white/5 p-6 rounded-2xl flex items-center gap-6 group hover:border-indigo-500/30 transition-all">
-                                     <div className="flex-1 grid grid-cols-3 gap-6">
-                                        <div className="space-y-1">
-                                          <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Label</label>
-                                          <input 
-                                            value={field.label}
-                                            onChange={(e) => updateField(step.id, field.id, { label: e.target.value })}
-                                            className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
-                                          />
-                                        </div>
-                                        <div className="space-y-1">
-                                          <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Type</label>
-                                          <select 
-                                            value={field.type}
-                                            onChange={(e) => updateField(step.id, field.id, { type: e.target.value as any })}
-                                            className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-sm outline-none"
-                                          >
-                                            <option value="text">Text Input</option>
-                                            <option value="file">Photo Upload</option>
-                                            <option value="date">Date Picker</option>
-                                          </select>
-                                        </div>
-                                        <div className="space-y-1">
-                                          <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">ID (Mapping)</label>
-                                          <input 
-                                            value={field.id}
-                                            onChange={(e) => updateField(step.id, field.id, { id: e.target.value })}
-                                            className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-sm font-mono text-indigo-400 outline-none"
-                                          />
-                                        </div>
-                                     </div>
-                                     <button onClick={() => removeField(step.id, field.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
-                                        <Trash2 className="w-4 h-4" />
-                                     </button>
+                          <div className="p-8 space-y-6">
+                             {editingStepHtml === step.id ? (
+                               <div className="space-y-6">
+                                 <div className="bg-slate-950 border border-white/10 rounded-2xl overflow-hidden">
+                                   <div className="px-6 py-3 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                         <Code className="w-3.5 h-3.5 text-indigo-400" />
+                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Step Canvas Editor</span>
+                                      </div>
+                                      <div className="flex gap-4">
+                                         {step.fields.map(f => (
+                                           <code key={f.id} className="text-[9px] bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded border border-indigo-500/20 cursor-help" title="Copy to use in HTML">
+                                              {"{{"}field:{f.id}{"}}"}
+                                           </code>
+                                         ))}
+                                      </div>
+                                   </div>
+                                   <textarea 
+                                     value={step.templateHtml}
+                                     onChange={(e) => updateStep(step.id, { templateHtml: e.target.value })}
+                                     className="w-full h-64 bg-transparent p-6 font-mono text-sm text-slate-300 outline-none resize-none"
+                                     placeholder="<div style='...'>{{field:id}}</div>"
+                                   />
+                                 </div>
+                                 <div className="p-4 bg-indigo-600/5 border border-indigo-500/10 rounded-2xl">
+                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1 italic">Pro Tip</p>
+                                    <p className="text-[11px] text-slate-500 leading-relaxed">Place <code className="text-slate-300">{"{{"}field:id{"}}"}</code> anywhere in your step HTML. We'll automatically inject the correct input or uploader for that field while maintaining your custom styles.</p>
+                                 </div>
+                               </div>
+                             ) : (
+                               <div className="space-y-4">
+                                  <div className="grid grid-cols-1 gap-4">
+                                    {step.fields.map((field) => (
+                                      <div key={field.id} className="bg-white/3 border border-white/5 p-6 rounded-2xl flex items-center gap-6 group hover:border-indigo-500/30 transition-all">
+                                         <div className="flex-1 grid grid-cols-3 gap-6">
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Label</label>
+                                              <input 
+                                                value={field.label}
+                                                onChange={(e) => updateField(step.id, field.id, { label: e.target.value })}
+                                                className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-indigo-500"
+                                              />
+                                            </div>
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Type</label>
+                                              <select 
+                                                value={field.type}
+                                                onChange={(e) => updateField(step.id, field.id, { type: e.target.value as any })}
+                                                className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-sm outline-none"
+                                              >
+                                                <option value="text">Text Input</option>
+                                                <option value="file">Photo Upload</option>
+                                                <option value="date">Date Picker</option>
+                                              </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">ID (Mapping)</label>
+                                              <input 
+                                                value={field.id}
+                                                onChange={(e) => updateField(step.id, field.id, { id: e.target.value })}
+                                                className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-sm font-mono text-indigo-400 outline-none"
+                                              />
+                                            </div>
+                                         </div>
+                                         <button onClick={() => removeField(step.id, field.id)} className="p-2 text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100">
+                                            <Trash2 className="w-4 h-4" />
+                                         </button>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
-                             </div>
-                             <button 
-                               onClick={() => addField(step.id)}
-                               className="w-full py-4 border-2 border-dashed border-white/5 rounded-2xl text-slate-600 font-bold text-sm hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
-                             >
-                               <Plus className="w-4 h-4" />
-                               ADD FIELD TO STEP
-                             </button>
+                                  <button 
+                                    onClick={() => addField(step.id)}
+                                    className="w-full py-4 border-2 border-dashed border-white/5 rounded-2xl text-slate-600 font-bold text-sm hover:border-indigo-500/50 hover:text-indigo-400 transition-all flex items-center justify-center gap-2"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                    ADD FIELD TO STEP
+                                  </button>
+                               </div>
+                             )}
                           </div>
                        </div>
                      ))}
