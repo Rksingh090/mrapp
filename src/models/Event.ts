@@ -14,6 +14,7 @@ export interface IStep {
   title: string;
   description?: string;
   fields: IFormField[];
+  templateHtml: string; // New: Custom HTML for this step
 }
 
 export interface IEvent extends mongoose.Document {
@@ -46,6 +47,7 @@ const StepSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   fields: [FormFieldSchema],
+  templateHtml: { type: String, default: '' },
 });
 
 const EventSchema = new mongoose.Schema<IEvent>({

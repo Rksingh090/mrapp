@@ -24,11 +24,13 @@ interface Step {
   title: string;
   description: string;
   fields: FormField[];
+  templateHtml: string;
 }
 
 export default function CreateEvent() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"general" | "steps" | "design" | "html">("general");
+  const [editingStepHtml, setEditingStepHtml] = useState<string | null>(null); // Current step being designed
   
   // General State
   const [title, setTitle] = useState("");
@@ -44,7 +46,20 @@ export default function CreateEvent() {
       fields: [
         { id: "name", type: "text", label: "Doctor Name", placeholder: "e.g. Dr. Jane Smith", required: true },
         { id: "photo", type: "file", label: "Doctor Photo", placeholder: "", required: true },
-      ]
+      ],
+      templateHtml: `<div style="padding: 60px 40px; text-align: center;">
+  <h1 style="font-size: 42px; font-weight: 900; tracking: tight; margin-bottom: 8px;">Let's get started!</h1>
+  <p style="color: #64748b; font-size: 18px; margin-bottom: 60px;">First, we need to know who we're celebrating.</p>
+  
+  <div style="max-width: 400px; margin: 0 auto; space-y: 24px;">
+    <div style="margin-bottom: 24px;">
+       {{field:name}}
+    </div>
+    <div style="margin-bottom: 24px;">
+       {{field:photo}}
+    </div>
+  </div>
+</div>`
     }
   ]);
 
@@ -80,7 +95,11 @@ export default function CreateEvent() {
       id: `step_${Date.now()}`,
       title: "New Step",
       description: "Briefly describe what this step is for",
-      fields: []
+      fields: [],
+      templateHtml: `<div style="padding: 60px 40px; text-align: center;">
+  <h1 style="font-size: 32px; font-weight: 900;">Step Canvas</h1>
+  <p style="color: #64748b; margin-top: 12px;">Customize this step to your liking.</p>
+</div>`
     };
     setSteps([...steps, newStep]);
   };
