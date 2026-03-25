@@ -9,11 +9,25 @@ export interface IFormField {
   options?: string[]; // For select type
 }
 
+export interface IStep {
+  id: string;
+  title: string;
+  description?: string;
+  fields: IFormField[];
+}
+
 export interface IEvent extends mongoose.Document {
   title: string;
   slug: string;
-  fields: IFormField[];
+  steps: IStep[];
   templateHtml: string;
+  pageConfig: {
+    theme: 'dark' | 'light';
+    primaryColor: string;
+    backgroundColor: string;
+    fontFamily: string;
+    showConfetti: boolean;
+  };
   active: boolean;
   createdAt: Date;
 }
@@ -27,11 +41,25 @@ const FormFieldSchema = new mongoose.Schema({
   options: [{ type: String }],
 });
 
+const StepSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  title: { type: String, required: true },
+  description: { type: String },
+  fields: [FormFieldSchema],
+});
+
 const EventSchema = new mongoose.Schema<IEvent>({
   title: { type: String, required: true },
   slug: { type: String, required: true, unique: true },
-  fields: [FormFieldSchema],
+  steps: [StepSchema],
   templateHtml: { type: String, required: true }, // The HTML with placeholders like {{name}}, {{image}}
+  pageConfig: {
+    theme: { type: String, enum: ['dark', 'light'], default: 'dark' },
+    primaryColor: { type: String, default: '#4f46e5' },
+    backgroundColor: { type: String, default: '#020617' },
+    fontFamily: { type: String, default: 'sans-serif' },
+    showConfetti: { type: Boolean, default: true },
+  },
   active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Layout, Users, FileText, Trash2, Edit2, Link as LinkIcon, ExternalLink, Settings, LayoutDashboard } from "lucide-react";
+import { Plus, Layout, Users, FileText, Trash2, Edit2, Link as LinkIcon, ExternalLink, Settings, LayoutDashboard, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -17,25 +17,42 @@ interface EventItem {
 export default function AdminDashboard() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch("/api/events");
+      const data = await res.json();
+      setEvents(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/events");
-        const data = await res.json();
-        setEvents(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchEvents();
   }, []);
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this event? This action will also invalidate its public URL.")) return;
+    
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Could not delete.");
+      setEvents(events.filter(e => e._id !== id));
+    } catch (err) {
+       alert("Error deleting event.");
+    } finally {
+       setDeletingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col p-6 space-y-8">
+      <aside className="w-64 bg-white border-r border-slate-200 hidden lg:flex flex-col p-6 space-y-8 h-screen sticky top-0">
         <div className="flex items-center gap-3 text-indigo-600 font-bold text-xl px-2">
            <Layout className="w-8 h-8" />
            <span>Engagement AdHub</span>
@@ -46,7 +63,7 @@ export default function AdminDashboard() {
              <LayoutDashboard className="w-5 h-5" />
              <span>Events</span>
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-all">
+          <Link href="/admin/submissions" className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-all group">
              <Users className="w-5 h-5" />
              <span>Responses</span>
           </Link>
@@ -84,6 +101,7 @@ export default function AdminDashboard() {
                   key={event._id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
                   className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all flex flex-col justify-between group"
                 >
                   <div className="space-y-4">
@@ -91,8 +109,12 @@ export default function AdminDashboard() {
                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-500">
                          <FileText className="w-6 h-6" />
                        </div>
-                       <button className="text-slate-400 hover:text-rose-500 transition-colors">
-                          <Trash2 className="w-5 h-5" />
+                       <button 
+                         onClick={() => handleDelete(event._id)}
+                         disabled={deletingId === event._id}
+                         className="text-slate-400 hover:text-rose-500 transition-colors p-2 rounded-lg hover:bg-rose-50 disabled:opacity-50"
+                       >
+                          {deletingId === event._id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                        </button>
                     </div>
 
